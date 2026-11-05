@@ -15,7 +15,7 @@ void UAchievementWidgetBase::NativeConstruct()
 		return;
 	}
 
-	Achievements = Subsystem;
+	BoundAchievements = Subsystem;
 	Subsystem->OnAchievementsReady.AddDynamic(this, &ThisClass::HandleAchievementsReady);
 	BindToAchievements(*Subsystem);
 
@@ -27,12 +27,12 @@ void UAchievementWidgetBase::NativeConstruct()
 
 void UAchievementWidgetBase::NativeDestruct()
 {
-	if (UAchievementLocalPlayerSubsystem* Subsystem = Achievements.Get())
+	if (UAchievementLocalPlayerSubsystem* Subsystem = BoundAchievements.Get())
 	{
 		Subsystem->OnAchievementsReady.RemoveDynamic(this, &ThisClass::HandleAchievementsReady);
 		UnbindFromAchievements(*Subsystem);
 	}
-	Achievements.Reset();
+	BoundAchievements.Reset();
 
 	Super::NativeDestruct();
 }
@@ -44,6 +44,6 @@ void UAchievementWidgetBase::HandleAchievementsReady()
 
 UAchievementComponent* UAchievementWidgetBase::GetAchievementComponent() const
 {
-	const UAchievementLocalPlayerSubsystem* Subsystem = Achievements.Get();
+	const UAchievementLocalPlayerSubsystem* Subsystem = BoundAchievements.Get();
 	return Subsystem ? Subsystem->GetAchievementComponent() : nullptr;
 }

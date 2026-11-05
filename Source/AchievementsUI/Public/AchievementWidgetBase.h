@@ -18,7 +18,7 @@ class ACHIEVEMENTSUI_API UAchievementWidgetBase : public UUserWidget
 public:
 	/** The owning player's achievement API: events, queries and claims. */
 	UFUNCTION(BlueprintPure, Category = "Achievements")
-	UAchievementLocalPlayerSubsystem* GetAchievements() const { return Achievements.Get(); }
+	UAchievementLocalPlayerSubsystem* GetAchievements() const { return BoundAchievements.Get(); }
 
 	/** The match component, or null outside a match. Prefer GetAchievements(). */
 	UFUNCTION(BlueprintPure, Category = "Achievements")
@@ -39,5 +39,5 @@ protected:
 	virtual void HandleAchievementsReady();
 
 private:
-	TWeakObjectPtr<UAchievementLocalPlayerSubsystem> Achievements;
+	TWeakObjectPtr<UAchievementLocalPlayerSubsystem> BoundAchievements;
 };
