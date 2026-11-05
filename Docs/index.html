@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Achievement System</title>
+<style>
+:root {
+	--bg: #f7f7f5;
+	--surface: #ffffff;
+	--surface-2: #f0f0ec;
+	--text: #1d1d1b;
+	--muted: #5f5f5a;
+	--border: #dcdcd6;
+	--accent: #b4561f;
+	--accent-soft: #f6e7dc;
+	--code-bg: #f0f0ec;
+	--ok: #2f7a3e;
+	--warn: #9a6a00;
+	--warn-soft: #fbf1d9;
+	--mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+	--sans: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #161615;
+		--surface: #1e1e1c;
+		--surface-2: #262624;
+		--text: #e9e9e4;
+		--muted: #a3a39c;
+		--border: #34342f;
+		--accent: #e58a52;
+		--accent-soft: #3a2619;
+		--code-bg: #262624;
+		--ok: #73c083;
+		--warn: #e0b04a;
+		--warn-soft: #3a3019;
+	}
+}
+:root[data-theme="dark"] {
+	--bg: #161615;
+	--surface: #1e1e1c;
+	--surface-2: #262624;
+	--text: #e9e9e4;
+	--muted: #a3a39c;
+	--border: #34342f;
+	--accent: #e58a52;
+	--accent-soft: #3a2619;
+	--code-bg: #262624;
+	--ok: #73c083;
+	--warn: #e0b04a;
+	--warn-soft: #3a3019;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font: 15px/1.6 var(--sans);
+}
+a { color: var(--accent); }
+code {
+	font-family: var(--mono);
+	font-size: 0.88em;
+	background: var(--code-bg);
+	padding: 1px 5px;
+	border-radius: 4px;
+}
+pre {
+	background: var(--code-bg);
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	padding: 12px 14px;
+	overflow-x: auto;
+	font: 13px/1.5 var(--mono);
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+
+.layout { display: flex; min-height: 100vh; }
+nav {
+	position: sticky;
+	top: 0;
+	align-self: flex-start;
+	width: 250px;
+	height: 100vh;
+	overflow-y: auto;
+	padding: 24px 16px;
+	border-right: 1px solid var(--border);
+	background: var(--surface);
+	flex-shrink: 0;
+}
+nav .brand { font-weight: 700; font-size: 16px; margin-bottom: 2px; }
+nav .version { color: var(--muted); font-size: 12px; margin-bottom: 20px; }
+nav ol { list-style: none; margin: 0; padding: 0; }
+nav li a {
+	display: block;
+	padding: 5px 10px;
+	border-radius: 5px;
+	color: var(--text);
+	text-decoration: none;
+	font-size: 14px;
+}
+nav li a:hover { background: var(--surface-2); }
+nav .group { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin: 16px 10px 4px; }
+
+main { flex: 1; min-width: 0; padding: 32px 40px 80px; max-width: 920px; }
+header.hero { margin-bottom: 32px; }
+header.hero h1 { font-size: 30px; margin: 0 0 6px; }
+header.hero p { color: var(--muted); margin: 0; font-size: 16px; }
+
+section { margin-bottom: 44px; }
+h2 { font-size: 22px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+h3 { font-size: 17px; margin: 24px 0 8px; }
+
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; display: block; overflow-x: auto; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--surface-2); font-weight: 600; white-space: nowrap; }
+
+.note, .warn {
+	border-left: 3px solid var(--accent);
+	background: var(--accent-soft);
+	padding: 10px 14px;
+	border-radius: 0 6px 6px 0;
+	margin: 14px 0;
+}
+.warn { border-color: var(--warn); background: var(--warn-soft); }
+.note strong, .warn strong { display: block; margin-bottom: 2px; }
+
+.steps { counter-reset: step; list-style: none; padding: 0; }
+.steps > li { counter-increment: step; position: relative; padding-left: 36px; margin-bottom: 10px; }
+.steps > li::before {
+	content: counter(step);
+	position: absolute; left: 0; top: 1px;
+	width: 24px; height: 24px; border-radius: 50%;
+	background: var(--accent); color: var(--surface);
+	font-size: 13px; font-weight: 700;
+	display: flex; align-items: center; justify-content: center;
+}
+
+.flow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+.flow .box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+.flow .box h4 { margin: 0 0 6px; font-size: 14px; }
+.flow .box ul { margin: 0; padding-left: 18px; font-size: 14px; }
+
+.theme-toggle {
+	margin-top: 24px;
+	background: var(--surface-2); color: var(--text);
+	border: 1px solid var(--border); border-radius: 5px;
+	padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer;
+}
+
+@media (max-width: 800px) {
+	.layout { display: block; }
+	nav { position: static; width: auto; height: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 16px; }
+	main { padding: 24px 16px 60px; }
+	.flow { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav>
+	<div class="brand">Achievement System</div>
+	<div class="version">v0.1.0 · Unreal Engine 5.8</div>
+	<ol>
+		<li class="group">Começando</li>
+		<li><a href="#visao-geral">Visão geral</a></li>
+		<li><a href="#instalacao">Instalação</a></li>
+		<li><a href="#arquitetura">Como funciona</a></li>
+		<li class="group">Uso</li>
+		<li><a href="#achievements">Criando achievements</a></li>
+		<li><a href="#eventos">Reportando eventos</a></li>
+		<li><a href="#condicoes">Condições</a></li>
+		<li><a href="#rewards">Rewards e granters</a></li>
+		<li><a href="#ui">Interface (UI)</a></li>
+		<li><a href="#steam">Steam</a></li>
+		<li class="group">Ferramentas</li>
+		<li><a href="#editor">Menu do editor</a></li>
+		<li><a href="#console">Comandos de console</a></li>
+		<li><a href="#testes">Testes automatizados</a></li>
+		<li><a href="#configuracoes">Configurações</a></li>
+		<li class="group">Referência</li>
+		<li><a href="#api">API</a></li>
+		<li><a href="#problemas">Solução de problemas</a></li>
+	</ol>
+	<button class="theme-toggle" type="button" id="themeToggle">Alternar tema</button>
+</nav>
+
+<main>
+<header class="hero">
+	<h1>Achievement System</h1>
+	<p>Achievements orientados a dados, com rewards entregues pelo host e sincronização com a Steam, feitos para jogos multiplayer P2P (listen server).</p>
+</header>
+
+<!-- ===================================================================== -->
+<section id="visao-geral">
+<h2>Visão geral</h2>
+<p>O plugin separa três responsabilidades:</p>
+<ul>
+	<li><strong>O designer</strong> cria achievements como Data Assets, sem código.</li>
+	<li><strong>O gameplay</strong> só avisa que algo aconteceu, com uma linha: <code>ReportAchievementEvent</code>.</li>
+	<li><strong>O plugin</strong> cuida de progresso, desbloqueio, rewards, replicação, save e Steam.</li>
+</ul>
+
+<table>
+	<tr><th>Módulo</th><th>Tipo</th><th>Responsabilidade</th></tr>
+	<tr><td><code>AchievementsCore</code></td><td>Runtime</td><td>Definições, componente, subsystem, rewards, save e interfaces. Não depende da Steam.</td></tr>
+	<tr><td><code>AchievementsSteam</code></td><td>Runtime (Win64, Linux, Mac)</td><td>Implementação da plataforma Steam.</td></tr>
+	<tr><td><code>AchievementsUI</code></td><td>Runtime</td><td>Classes base de widgets: toast, lista e entrada.</td></tr>
+	<tr><td><code>AchievementsEditor</code></td><td>Editor</td><td>Menu <em>Tools → Achievements</em>: validação, exportação e esta documentação.</td></tr>
+</table>
+</section>
+
+<!-- ===================================================================== -->
+<section id="instalacao">
+<h2>Instalação</h2>
+<ol class="steps">
+	<li>Copie a pasta <code>Plugins/AchievementSystem</code> para o seu projeto e ative o plugin. Feche o editor e compile pela IDE.</li>
+	<li>
+		Em <strong>Project Settings → Asset Manager → Primary Asset Types to Scan</strong>, adicione uma entrada:
+		<ul>
+			<li><strong>Primary Asset Type:</strong> <code>AchievementDefinition</code> (exatamente este nome);</li>
+			<li><strong>Asset Base Class:</strong> <code>AchievementDefinition</code>;</li>
+			<li><strong>Directories:</strong> a pasta onde ficarão as definições, por exemplo <code>/Game/Achievements</code>.</li>
+		</ul>
+		Reinicie o editor depois de mudar essa configuração.
+	</li>
+	<li>Adicione o componente <code>AchievementComponent</code> ao seu <strong>PlayerState</strong>.</li>
+	<li>Crie as gameplay tags: <code>Achievement.*</code> para os achievements e <code>Event.*</code> para os eventos.</li>
+	<li>Se o achievement tiver rewards, ligue cada tipo de reward a um granter em <a href="#rewards">Default Granters</a>.</li>
+</ol>
+<div class="note">
+	<strong>Teste rápido</strong>
+	Crie uma definição, rode o PIE com 2 jogadores em <em>Play As Listen Server</em> e digite <code>Achievements.SelfTest</code> no console da janela do host.
+</div>
+</section>
+
+<!-- ===================================================================== -->
+<section id="arquitetura">
+<h2>Como funciona</h2>
+<p>A regra principal: <strong>o host decide o progresso e entrega os rewards; cada jogador conversa com a própria Steam.</strong> A Steam só aceita achievements da conta logada na máquina, então o host nunca escreve na Steam de outro jogador.</p>
+
+<div class="flow">
+	<div class="box">
+		<h4>Host (listen server)</h4>
+		<ul>
+			<li>Recebe os eventos do gameplay</li>
+			<li>Avalia condições e pré-requisitos</li>
+			<li>Atualiza o progresso e desbloqueia</li>
+			<li>Entrega os rewards pelos granters</li>
+		</ul>
+	</div>
+	<div class="box">
+		<h4>Cada jogador (inclusive o host)</h4>
+		<ul>
+			<li>Guarda o próprio save local</li>
+			<li>Envia o save ao host ao entrar</li>
+			<li>Recebe o progresso replicado</li>
+			<li>Sincroniza com a própria conta Steam</li>
+		</ul>
+	</div>
+</div>
+
+<h3>Ciclo de vida</h3>
+<ol class="steps">
+	<li>Ao entrar na partida, o jogador carrega o save local e envia um snapshot ao host. O host valida o tamanho, descarta ids desconhecidos e limita os valores à meta.</li>
+	<li>O gameplay no host chama <code>ReportAchievementEvent</code>. Todo achievement que ouve aquele evento avança.</li>
+	<li>Quando o valor atinge a meta, o achievement é desbloqueado e, com <code>bAutoClaimRewards</code>, os rewards são entregues.</li>
+	<li>O progresso é replicado só para o dono do PlayerState (FastArray, só as mudanças).</li>
+	<li>O dono salva localmente e põe a operação na fila da Steam. A fila é persistida e tentada de novo até a Steam confirmar.</li>
+</ol>
+
+<h3>Garantias</h3>
+<ul>
+	<li><strong>Progresso nunca regride:</strong> o save local e o estado no host só aumentam. Se o host ainda não recebeu o save do jogador, valores menores replicados não sobrescrevem o save, e o que já contou no host antes do save chegar é somado, não perdido.</li>
+	<li><strong>Save com backup:</strong> a cada início, uma cópia do save que carregou sem erro vai para <code>&lt;Slot&gt;_Backup</code>. Se o save principal sumir ou corromper, o backup é restaurado.</li>
+	<li><strong>Reward nunca duplicado:</strong> cada reward tem um bit de "entregue". Novas tentativas só processam o que falta.</li>
+	<li><strong>Nada se perde offline:</strong> as operações pendentes da Steam ficam no save e são enviadas quando ela voltar.</li>
+	<li><strong>Reinstalação:</strong> ao iniciar, o plugin compara o save com a Steam. O que está desbloqueado na Steam é recuperado no save, e rewards pendentes são entregues ao entrar na próxima partida.</li>
+</ul>
+
+<h3>Split-screen</h3>
+<p>Cada jogador local tem o próprio PlayerState, componente, save e UI:</p>
+<ul>
+	<li><strong>Jogador principal</strong> (o primeiro local player, logado na Steam): save em <code>Achievements</code> e sincronização com a Steam.</li>
+	<li><strong>Demais jogadores</strong> (convidados): saves próprios em <code>Achievements_P1</code>, <code>Achievements_P2</code>... Eles ganham achievements e rewards no jogo, mas não na Steam, porque ela só aceita a conta logada.</li>
+	<li>Os widgets do plugin usam o jogador dono de cada widget, então cada metade da tela mostra os próprios avisos e a própria lista.</li>
+	<li>O save do convidado fica ligado à posição do jogador local (P1, P2...). Se os jogadores trocarem de posição, trocam de save.</li>
+</ul>
+
+<div class="warn">
+	<strong>Limitação do modelo P2P</strong>
+	Sem um servidor próprio, cada jogador é dono do próprio save. O host valida limites, mas um jogador pode editar o arquivo de save. Para rewards valiosos, considere um backend próprio.
+</div>
+</section>
+
+<!-- ===================================================================== -->
+<section id="achievements">
+<h2>Criando achievements</h2>
+<p>No Content Browser: <strong>botão direito → Miscellaneous → Data Asset → AchievementDefinition</strong>, dentro da pasta configurada no Asset Manager.</p>
+
+<table>
+	<tr><th>Campo</th><th>Para que serve</th></tr>
+	<tr><td><code>Id</code></td><td>Tag única do achievement, por exemplo <code>Achievement.Combat.Kill100</code>.</td></tr>
+	<tr><td><code>PlatformApiName</code></td><td>Nome do achievement cadastrado no Steamworks, por exemplo <code>ACH_KILL_100</code>. Vazio = achievement só interno, sem Steam.</td></tr>
+	<tr><td><code>PlatformStatName</code></td><td>Opcional. Stat da Steam que espelha o progresso e mostra o aviso nativo de progresso da Steam.</td></tr>
+	<tr><td><code>DisplayName</code>, <code>Description</code>, <code>Icon</code></td><td>Exibidos pela UI. O ícone é carregado de forma assíncrona.</td></tr>
+	<tr><td><code>bHidden</code></td><td>Mascara nome, descrição e ícone na lista até o desbloqueio.</td></tr>
+	<tr><td><code>ListenedEvents</code></td><td>Eventos que fazem este achievement avançar.</td></tr>
+	<tr><td><code>TargetValue</code></td><td><code>1</code> = desbloqueia de uma vez. Maior que 1 = incremental (ex.: 100 kills).</td></tr>
+	<tr><td><code>Prerequisites</code></td><td>Achievements que precisam estar desbloqueados antes de este começar a contar.</td></tr>
+	<tr><td><code>Conditions</code></td><td>Filtros avaliados a cada evento. Veja <a href="#condicoes">Condições</a>.</td></tr>
+	<tr><td><code>Rewards</code></td><td>O que o jogador ganha, até 32 por achievement. Veja <a href="#rewards">Rewards</a>.</td></tr>
+</table>
+
+<p>A validação roda ao salvar o asset e acusa: Id vazio ou repetido, API name repetido, nenhum evento ouvido, reward vazio e pré-requisito apontando para o próprio achievement.</p>
+</section>
+
+<!-- ===================================================================== -->
+<section id="eventos">
+<h2>Reportando eventos</h2>
+<p>O plugin funciona <strong>por eventos</strong>: o gameplay não diz "desbloqueie X", e sim "aconteceu Y". Um evento pode alimentar vários achievements, e o designer cria achievements novos sem tocar em código.</p>
+
+<div class="warn">
+	<strong>Sempre no host</strong>
+	Reporte eventos só no host (GameMode, lógica de dano, objetivos). Chamadas feitas no cliente são ignoradas.
+</div>
+
+<h3>Blueprint</h3>
+<pre><code>Report Achievement Event
+  Player:       (PlayerState de quem fez a ação)
+  Event Tag:    Event.Enemy.Killed
+  Amount:       1
+  Context Tags: (opcional) Difficulty.Hard, Weapon.Sword</code></pre>
+<p>Para todos os jogadores da partida (ex.: "time venceu"), use <strong>Report Achievement Event For All</strong>.</p>
+
+<h3>C++</h3>
+<pre><code>#include "AchievementStatics.h"
+
+FGameplayTagContainer ContextTags;
+ContextTags.AddTag(TAG_Difficulty_Hard);
+
+UAchievementStatics::ReportAchievementEvent(KillerPlayerState, TAG_Event_Enemy_Killed, 1, ContextTags);</code></pre>
+
+<h3>Exemplo: um evento, três achievements</h3>
+<table>
+	<tr><th>Achievement</th><th>ListenedEvents</th><th>TargetValue</th><th>Condição</th></tr>
+	<tr><td>Primeira kill</td><td><code>Event.Enemy.Killed</code></td><td>1</td><td>—</td></tr>
+	<tr><td>100 kills</td><td><code>Event.Enemy.Killed</code></td><td>100</td><td>—</td></tr>
+	<tr><td>Kill no difícil</td><td><code>Event.Enemy.Killed</code></td><td>1</td><td>Requires Context Tags: <code>Difficulty.Hard</code></td></tr>
+</table>
+</section>
+
+<!-- ===================================================================== -->
+<section id="condicoes">
+<h2>Condições</h2>
+<p>Uma condição decide se um evento conta para o achievement. Ela roda no host, a cada evento.</p>
+
+<h3>Prontas</h3>
+<table>
+	<tr><th>Classe</th><th>O que faz</th></tr>
+	<tr><td><code>Requires Context Tags</code></td><td>Só conta se o evento trouxer todas as tags em <code>RequiredTags</code>.</td></tr>
+</table>
+
+<h3>Criando em Blueprint</h3>
+<ol class="steps">
+	<li><strong>Blueprint Class → All Classes → AchievementCondition</strong>, por exemplo <code>BP_Cond_PlayerAlive</code>.</li>
+	<li>Em <strong>My Blueprint → Functions → Override</strong>, escolha <strong>Is Satisfied</strong>.</li>
+	<li>Use o <code>Context</code> (<code>EventTag</code>, <code>Amount</code>, <code>ContextTags</code>, <code>Player</code>) e retorne <strong>true</strong> para contar ou <strong>false</strong> para ignorar.</li>
+	<li>Variáveis marcadas como <strong>Instance Editable</strong> viram parâmetros editáveis dentro do Data Asset.</li>
+	<li>Na definição, clique no <strong>+</strong> em <code>Conditions</code> e escolha a classe.</li>
+</ol>
+
+<h3>Criando em C++</h3>
+<pre><code>UCLASS(meta = (DisplayName = "Player Alive"))
+class UMyCondition_PlayerAlive : public UAchievementCondition
+{
+	GENERATED_BODY()
+
+protected:
+	virtual bool IsSatisfied_Implementation(const FAchievementEventContext& Context) const override
+	{
+		const APawn* Pawn = Context.Player ? Context.Player-&gt;GetPawn() : nullptr;
+		return Pawn != nullptr;
+	}
+};</code></pre>
+
+<div class="warn">
+	<strong>Cuidados</strong>
+	<ul>
+		<li><strong>Sem estado:</strong> a mesma instância é usada por todos os jogadores, então não guarde contadores nela. Contagem é papel do <code>TargetValue</code>.</li>
+		<li><strong>Sem World direto:</strong> a condição vive dentro do Data Asset. Chegue no mundo a partir de <code>Context.Player</code>.</li>
+		<li><strong>Dados que só quem dispara o evento conhece</strong> devem ir como <code>ContextTags</code>.</li>
+	</ul>
+</div>
+</section>
+
+<!-- ===================================================================== -->
+<section id="rewards">
+<h2>Rewards e granters</h2>
+<p>Um reward tem duas partes, separadas para o plugin não depender do inventário do seu jogo:</p>
+<ul>
+	<li><strong>Reward:</strong> só dados, descreve o que dar (ex.: 100 de ouro).</li>
+	<li><strong>Granter:</strong> a lógica que entrega de fato, no seu inventário ou carteira.</li>
+</ul>
+
+<h3>Prontos</h3>
+<table>
+	<tr><th>Reward</th><th>Campos</th></tr>
+	<tr><td><code>Item Reward</code></td><td><code>ItemId</code> (Primary Asset Id), <code>Quantity</code></td></tr>
+	<tr><td><code>Currency Reward</code></td><td><code>CurrencyTag</code>, <code>Amount</code></td></tr>
+</table>
+<p>Todo reward tem também <code>DisplayName</code> e <code>Icon</code>, exibidos pela entrada da lista.</p>
+<p>Exemplo completo: <code>AchievementExampleWalletComponent</code>, uma carteira replicada para colocar no PlayerState, e <code>AchievementExampleCurrencyGranter</code>, que deposita o Currency Reward nela.</p>
+
+<h3>Criando um reward em Blueprint</h3>
+<ol class="steps">
+	<li><strong>Blueprint Class → All Classes → AchievementReward</strong>, por exemplo <code>BP_Reward_Skin</code>.</li>
+	<li>Crie as variáveis (ex.: <code>SkinId</code>) e marque como <strong>Instance Editable</strong>. Não coloque lógica aqui.</li>
+</ol>
+
+<h3>Criando um granter em Blueprint</h3>
+<ol class="steps">
+	<li><strong>Blueprint Class → Object</strong>, por exemplo <code>BP_Granter_Skin</code>.</li>
+	<li>Em <strong>Class Settings → Implemented Interfaces → Add</strong>, escolha <strong>AchievementRewardGranter</strong>.</li>
+	<li>Em <strong>My Blueprint → Interfaces</strong>, implemente <strong>Grant Reward</strong>: faça Cast do <code>Reward</code> para a sua classe, entregue usando o <code>Player</code> e retorne o resultado.</li>
+	<li>Em <strong>Project Settings → Plugins → Achievements → Default Granters</strong>, clique no <strong>+</strong> e ligue <code>BP_Reward_Skin</code> → <code>BP_Granter_Skin</code>.</li>
+</ol>
+<p>Um granter registrado para uma classe base também atende as classes filhas.</p>
+
+<h3>Resultados do granter</h3>
+<table>
+	<tr><th>Resultado</th><th>Quando usar</th><th>O que acontece</th></tr>
+	<tr><td><strong>Granted</strong></td><td>Entregou</td><td>Marcado como entregue e nunca repetido.</td></tr>
+	<tr><td><strong>Deferred</strong></td><td>Bloqueio temporário (ex.: inventário cheio)</td><td>Fica pendente. É entregue quando o jogo chamar <code>RetryPendingRewards()</code> no host, por um claim manual ou na próxima partida.</td></tr>
+	<tr><td><strong>Failed</strong></td><td>Erro (ex.: componente faltando)</td><td>Fica pendente e gera erro no log. <code>RetryPendingRewards()</code> pula; só um claim manual ou a próxima partida tenta de novo.</td></tr>
+</table>
+
+<h3>Auto-claim ou claim manual</h3>
+<ul>
+	<li><code>bAutoClaimRewards = true</code> (padrão): os rewards são entregues no desbloqueio.</li>
+	<li><code>bAutoClaimRewards = false</code>: o jogador resgata pela UI, com o botão <strong>Claim</strong> da entrada ou <code>ClaimAll</code> da lista.</li>
+</ul>
+
+<h3>Repetindo rewards Deferred</h3>
+<pre><code>// No host, quando o bloqueio sumir (ex.: inventário liberou espaço)
+UAchievementStatics::GetAchievementComponent(PlayerState)-&gt;RetryPendingRewards();</code></pre>
+
+<div class="warn">
+	<strong>O granter roda só no host</strong>
+	O que ele alterar precisa ser replicado pelo seu sistema para o cliente ver. Assim como a condição, um único granter atende todos os jogadores: não guarde estado nele.
+</div>
+</section>
+
+<!-- ===================================================================== -->
+<section id="ui">
+<h2>Interface (UI)</h2>
+<p>As classes base ficam no módulo <code>AchievementsUI</code>. O C++ fornece dados e eventos, e o visual fica no seu Widget Blueprint. Os widgets encontram sozinhos o componente do jogador local e tentam de novo até o PlayerState replicar.</p>
+
+<h3>Toast (aviso de desbloqueio)</h3>
+<ol class="steps">
+	<li>Crie um Widget Blueprint com parent <code>AchievementToastWidget</code>.</li>
+	<li>Implemente <strong>ShowToast(Toast)</strong>: preencha os textos com <code>Toast.Definition</code>, diferencie <code>Toast.Type</code> (Unlocked ou RewardsClaimed) e toque a animação de entrada.</li>
+	<li>Implemente <strong>OnQueueEmpty</strong> para esconder o widget.</li>
+	<li>Adicione o widget à tela no HUD ou no PlayerController.</li>
+</ol>
+<table>
+	<tr><th>Propriedade</th><th>Padrão</th><th>Efeito</th></tr>
+	<tr><td><code>AutoFinishSeconds</code></td><td>4</td><td>Fecha cada aviso após N segundos. Com 0, o Blueprint chama <code>FinishToast</code>, por exemplo ao fim da animação.</td></tr>
+	<tr><td><code>bShowRewardToasts</code></td><td>true</td><td>Também mostra um aviso quando os rewards são entregues.</td></tr>
+</table>
+
+<h3>Lista de achievements</h3>
+<ol class="steps">
+	<li>
+		<strong>Entrada:</strong> Widget Blueprint com parent <code>AchievementEntryWidget</code>.
+		<ul>
+			<li>Implemente <strong>OnDataChanged(Data)</strong> com os textos, uma ProgressBar ligada a <code>Data.Progress</code> e a visibilidade do botão por <code>Data.bClaimable</code>.</li>
+			<li>Implemente <strong>OnIconLoaded(Icon)</strong>.</li>
+			<li>Rewards: <code>Data.Rewards</code> traz nome, ícone e <code>bGranted</code> de cada reward. Use <code>Data.bHasRewards</code> para mostrar ou esconder a área de rewards, e implemente <strong>OnRewardIconLoaded(RewardIndex, Icon)</strong>, que dispara uma vez por reward quando o ícone termina de carregar.</li>
+			<li>Ligue o botão de resgatar a <strong>Claim</strong>.</li>
+		</ul>
+	</li>
+	<li>
+		<strong>Lista:</strong> Widget Blueprint com parent <code>AchievementListWidget</code>.
+		<ul>
+			<li>Adicione um painel (Scroll Box, Vertical Box...) chamado <strong>EntryContainer</strong>.</li>
+			<li>Em <code>EntryClass</code>, escolha o Blueprint de entrada.</li>
+			<li>Opcional: implemente <strong>OnListUpdated</strong> e use <code>GetUnlockedCount</code> / <code>GetTotalCount</code> para mostrar "3 / 20".</li>
+		</ul>
+	</li>
+</ol>
+<p>Ordem da lista: resgatáveis, desbloqueados, em progresso e bloqueados. Achievements ocultos aparecem mascarados até o desbloqueio; para escondê-los totalmente, desligue <code>bShowHiddenLocked</code>.</p>
+
+<h3>Eventos do componente (só no jogador local)</h3>
+<table>
+	<tr><th>Evento</th><th>Dispara quando</th></tr>
+	<tr><td><code>OnProgressChanged</code></td><td>Qualquer mudança de progresso ou estado.</td></tr>
+	<tr><td><code>OnAchievementUnlocked</code></td><td>Desbloqueio novo. Não dispara para o que já veio desbloqueado do save.</td></tr>
+	<tr><td><code>OnRewardsClaimable</code></td><td>Achievement desbloqueado com rewards pendentes.</td></tr>
+	<tr><td><code>OnRewardsClaimed</code></td><td>Todos os rewards do achievement foram entregues.</td></tr>
+</table>
+</section>
+
+<!-- ===================================================================== -->
+<section id="steam">
+<h2>Steam</h2>
+<ol class="steps">
+	<li>Cadastre os achievements no site de parceiros do Steamworks, em <strong>Stats &amp; Achievements</strong>. Use a <a href="#editor">planilha exportada</a> como referência.</li>
+	<li>Preencha o <code>PlatformApiName</code> de cada definição com o mesmo nome cadastrado.</li>
+	<li>Configure o <code>OnlineSubsystemSteam</code> do projeto (AppID e <code>DefaultEngine.ini</code>), como em qualquer jogo Steam na Unreal.</li>
+</ol>
+<ul>
+	<li>Os desbloqueios são enviados na hora. Stats e outras operações pendentes são agrupados e enviados a cada <code>CommitIntervalSeconds</code>.</li>
+	<li>Sem a Steam, por exemplo no editor sem o cliente aberto, o plugin usa a plataforma <strong>Null</strong> e tudo funciona localmente.</li>
+	<li>Para outra plataforma (Epic, consoles), implemente <code>IAchievementPlatform</code> e registre um <code>IAchievementPlatformFactory</code> como modular feature, como faz o módulo <code>AchievementsSteam</code>.</li>
+</ul>
+<div class="note">
+	<strong>No PIE, todos os jogadores usam a mesma conta Steam</strong>
+	Um achievement desbloqueado por um jogador volta para os outros pela reconciliação. Use <code>Achievements.Reset</code> em cada janela para começar do zero.
+</div>
+</section>
+
+<!-- ===================================================================== -->
+<section id="editor">
+<h2>Menu do editor</h2>
+<p>Em <strong>Tools → Achievements</strong>:</p>
+<table>
+	<tr><th>Item</th><th>O que faz</th></tr>
+	<tr><td><strong>Validate Achievements</strong></td><td>Valida todas as definições e mostra o total de erros e avisos. Os detalhes vão para o Output Log, categoria <code>LogAchievements</code>.</td></tr>
+	<tr><td><strong>Export Steamworks Sheet</strong></td><td>Gera <code>Saved/Achievements/SteamworksAchievements.csv</code>, com uma linha por achievement em ordem de API name. A Steamworks não importa em massa: use a planilha para preencher o site. Os ícones (JPG 64×64) são enviados à mão.</td></tr>
+	<tr><td><strong>Documentation</strong></td><td>Abre esta página numa aba do editor, que pode ser encaixada como qualquer outra janela.</td></tr>
+	<tr><td><strong>Documentation (External Browser)</strong></td><td>Abre esta página no navegador padrão.</td></tr>
+</table>
+</section>
+
+<!-- ===================================================================== -->
+<section id="console">
+<h2>Comandos de console</h2>
+<p>Disponíveis fora do build Shipping. Abra o console com <code>`</code>.</p>
+<table>
+	<tr><th>Comando</th><th>Onde</th><th>O que faz</th></tr>
+	<tr><td><code>Achievements.SelfTest [Id]</code></td><td>host</td><td>Desbloqueia um achievement para todos e verifica o host, os rewards, a replicação e o save do cliente.</td></tr>
+	<tr><td><code>Achievements.Report &lt;EventTag&gt; [Amount]</code></td><td>host</td><td>Reporta um evento para todos os jogadores.</td></tr>
+	<tr><td><code>Achievements.Claim [Id]</code></td><td>qualquer</td><td>Resgata os rewards pendentes do jogador daquela janela (todos, sem Id).</td></tr>
+	<tr><td><code>Achievements.Dump</code></td><td>qualquer</td><td>Lista as definições, a plataforma ativa e o progresso visível naquela janela.</td></tr>
+	<tr><td><code>Achievements.Reset</code></td><td>qualquer</td><td>Apaga os saves de todos os jogadores locais daquela janela, com os backups, e os achievements na plataforma do jogador principal. Reinicie o PIE em seguida.</td></tr>
+</table>
+<div class="note">
+	<strong>Testando a replicação</strong>
+	As verificações de cliente do <code>SelfTest</code> exigem PIE com 2 ou mais jogadores, Net Mode <em>Play As Listen Server</em> e <em>Run Under One Process</em> ligado. No PIE, cada instância usa o próprio save (<code>Achievements_PIE0</code>, <code>Achievements_PIE1</code>...).
+</div>
+</section>
+
+<!-- ===================================================================== -->
+<section id="testes">
+<h2>Testes automatizados</h2>
+<p>O módulo <code>AchievementsTests</code>, só de editor, traz Automation Specs no grupo <code>AchievementSystem</code>:</p>
+<table>
+	<tr><th>Grupo</th><th>O que valida</th></tr>
+	<tr><td><code>AchievementSystem.Merge</code></td><td>O progresso nunca regride: valores máximos, data de desbloqueio mais antiga, união dos rewards entregues e limite pela meta.</td></tr>
+	<tr><td><code>AchievementSystem.Storage</code></td><td>Salvar e carregar, backup, recuperação de save corrompido ou apagado, e a plataforma Null.</td></tr>
+	<tr><td><code>AchievementSystem.Progress</code></td><td>Eventos, metas, eventos ignorados, vários achievements por evento, jogadores independentes, pré-requisitos e condições.</td></tr>
+	<tr><td><code>AchievementSystem.Rewards</code></td><td>Auto-claim e claim manual, Deferred e Failed, <code>RetryPendingRewards</code>, <code>ClaimAll</code> e a garantia de nunca entregar duas vezes.</td></tr>
+</table>
+<h3>Rodando no editor</h3>
+<p>Em <strong>Tools → Test Automation</strong>, filtre por <code>AchievementSystem</code>, marque os testes e clique em <strong>Start Tests</strong>.</p>
+<h3>Rodando por linha de comando (CI)</h3>
+<pre><code>UnrealEditor-Cmd.exe SeuProjeto.uproject -ExecCmds="Automation RunTests AchievementSystem;Quit" -unattended -nullrhi -nosplash -log</code></pre>
+<div class="note">
+	<strong>Isolados do projeto</strong>
+	Os testes criam as próprias definições, tags (<code>AchievementTests.*</code>), granter e saves temporários. Não dependem dos assets do projeto e não alteram os saves reais.
+</div>
+</section>
+
+<!-- ===================================================================== -->
+<section id="configuracoes">
+<h2>Configurações</h2>
+<p>Em <strong>Project Settings → Plugins → Achievements</strong>.</p>
+<table>
+	<tr><th>Opção</th><th>Padrão</th><th>Descrição</th></tr>
+	<tr><td><code>PreferredPlatform</code></td><td>Steam</td><td>Plataforma a usar. Se não estiver disponível, usa Null.</td></tr>
+	<tr><td><code>CommitIntervalSeconds</code></td><td>5</td><td>Intervalo entre envios à plataforma e gravações do save.</td></tr>
+	<tr><td><code>bAutoClaimRewards</code></td><td>true</td><td>Entrega os rewards no desbloqueio. Desligado, o jogador resgata pela UI.</td></tr>
+	<tr><td><code>DefaultGranters</code></td><td>—</td><td>Liga cada classe de reward ao granter que a entrega.</td></tr>
+	<tr><td><code>SaveSlotName</code></td><td>Achievements</td><td>Nome do slot do save local.</td></tr>
+	<tr><td><code>MaxSnapshotEntries</code></td><td>1024</td><td>Tamanho máximo do save que um cliente pode enviar ao host.</td></tr>
+</table>
+</section>
+
+<!-- ===================================================================== -->
+<section id="api">
+<h2>API</h2>
+
+<h3>UAchievementStatics (Blueprint Function Library)</h3>
+<table>
+	<tr><th>Função</th><th>Onde</th><th>Descrição</th></tr>
+	<tr><td><code>ReportAchievementEvent(Player, EventTag, Amount, ContextTags)</code></td><td>host</td><td>Reporta um evento para um jogador.</td></tr>
+	<tr><td><code>ReportAchievementEventForAll(WorldContext, EventTag, Amount, ContextTags)</code></td><td>host</td><td>Reporta um evento para todos os jogadores.</td></tr>
+	<tr><td><code>GetAchievementComponent(Player)</code></td><td>qualquer</td><td>Retorna o componente do PlayerState.</td></tr>
+</table>
+
+<h3>UAchievementComponent</h3>
+<table>
+	<tr><th>Membro</th><th>Onde</th><th>Descrição</th></tr>
+	<tr><td><code>GetProgress(Id, OutEntry)</code></td><td>qualquer</td><td>Progresso de um achievement.</td></tr>
+	<tr><td><code>IsUnlocked(Id)</code></td><td>qualquer</td><td>Se está desbloqueado.</td></tr>
+	<tr><td><code>GetClaimableAchievements()</code></td><td>qualquer</td><td>Achievements com rewards pendentes.</td></tr>
+	<tr><td><code>RequestClaimRewards(Id)</code></td><td>dono</td><td>Pede ao host os rewards de um achievement.</td></tr>
+	<tr><td><code>RequestClaimAllRewards()</code></td><td>dono</td><td>Pede ao host todos os rewards pendentes.</td></tr>
+	<tr><td><code>RetryPendingRewards()</code></td><td>host</td><td>Tenta de novo os rewards Deferred, sem ação do jogador.</td></tr>
+	<tr><td><code>ReportEvent(Context)</code></td><td>host</td><td>Versão C++ de baixo nível do <code>ReportAchievementEvent</code>.</td></tr>
+</table>
+
+<h3>UAchievementSubsystem (Game Instance)</h3>
+<table>
+	<tr><th>Membro</th><th>Descrição</th></tr>
+	<tr><td><code>GetAllDefinitions()</code></td><td>Todas as definições carregadas.</td></tr>
+	<tr><td><code>FindDefinition(Id)</code></td><td>Definição pelo Id.</td></tr>
+	<tr><td><code>RegisterRewardGranter(RewardClass, Granter)</code></td><td>Registra um granter por código, como alternativa ao Default Granters.</td></tr>
+	<tr><td><code>GetPlatformName()</code></td><td>Plataforma ativa (Steam ou Null).</td></tr>
+</table>
+
+<h3>UAchievementLocalPlayerSubsystem (Local Player)</h3>
+<p>Um por jogador local. Cuida do save e da sincronização com a plataforma daquele jogador.</p>
+<table>
+	<tr><th>Membro</th><th>Descrição</th></tr>
+	<tr><td><code>IsPrimaryPlayer()</code></td><td>Se este é o jogador principal, o que está logado na Steam.</td></tr>
+	<tr><td><code>FlushPlatform()</code></td><td>Envia agora as operações pendentes à plataforma (ex.: no fim da partida). Não faz nada para convidados.</td></tr>
+</table>
+
+<h3>Pontos de extensão</h3>
+<table>
+	<tr><th>Classe</th><th>Para</th></tr>
+	<tr><td><code>UAchievementCondition</code></td><td>Novas condições (C++ ou Blueprint).</td></tr>
+	<tr><td><code>UAchievementReward</code></td><td>Novos tipos de reward (C++ ou Blueprint).</td></tr>
+	<tr><td><code>IAchievementRewardGranter</code></td><td>Entregar rewards no seu sistema (C++ ou Blueprint).</td></tr>
+	<tr><td><code>IAchievementPlatform</code> + <code>IAchievementPlatformFactory</code></td><td>Novas plataformas (C++).</td></tr>
+	<tr><td><code>IAchievementStorage</code></td><td>Outro armazenamento, como nuvem ou backend (C++).</td></tr>
+</table>
+</section>
+
+<!-- ===================================================================== -->
+<section id="problemas">
+<h2>Solução de problemas</h2>
+<table>
+	<tr><th>Sintoma</th><th>Causa e solução</th></tr>
+	<tr>
+		<td><code>Loaded 0 achievement definitions</code></td>
+		<td>O <em>Primary Asset Type</em> no Asset Manager precisa ser exatamente <code>AchievementDefinition</code>, e o diretório deve apontar para a pasta das definições. Reinicie o editor depois de mudar.</td>
+	</tr>
+	<tr>
+		<td>Achievement já aparece desbloqueado num teste novo</td>
+		<td>Com a Steam ativa, os jogadores do PIE compartilham a conta, e a reconciliação traz o desbloqueio. Rode <code>Achievements.Reset</code> em cada janela e reinicie o PIE.</td>
+	</tr>
+	<tr>
+		<td><code>No granter registered for reward class ...</code></td>
+		<td>Falta ligar a classe do reward a um granter em <strong>Default Granters</strong>.</td>
+	</tr>
+	<tr>
+		<td><code>Invalid default granter ...</code></td>
+		<td>A classe do granter não implementa a interface <code>AchievementRewardGranter</code>.</td>
+	</tr>
+	<tr>
+		<td>Reward não é entregue e o achievement fica resgatável</td>
+		<td>O granter retornou Deferred ou Failed. Veja o log e use <code>RetryPendingRewards()</code> ou um claim manual.</td>
+	</tr>
+	<tr>
+		<td><code>ReportAchievementEvent: ... has no UAchievementComponent</code></td>
+		<td>O componente não foi adicionado ao PlayerState.</td>
+	</tr>
+	<tr>
+		<td>Toast ou lista não aparece no cliente</td>
+		<td>Confira se o widget foi adicionado à tela do jogador local e se o evento foi reportado no host. Use <code>Achievements.Dump</code> na janela do cliente.</td>
+	</tr>
+	<tr>
+		<td>Módulo novo ou mudança de reflexão não aparece</td>
+		<td>O Live Coding não carrega módulos novos nem aplica todas as mudanças de <code>UCLASS</code>/<code>UINTERFACE</code>. Feche o editor e compile pela IDE.</td>
+	</tr>
+	<tr>
+		<td><code>Steam rejected achievement '...'</code></td>
+		<td>O <code>PlatformApiName</code> não bate com o cadastrado no Steamworks, ou as mudanças no site não foram publicadas.</td>
+	</tr>
+</table>
+</section>
+
+</main>
+</div>
+
+<script>
+(function () {
+	var root = document.documentElement;
+	var key = "achievement-docs-theme";
+	try {
+		var saved = localStorage.getItem(key);
+		if (saved === "light" || saved === "dark") root.setAttribute("data-theme", saved);
+	} catch (e) {}
+
+	// Some viewers (embedded previews, data: or sandboxed pages) ignore #hash navigation,
+	// so in-page links scroll explicitly instead of relying on the browser.
+	document.addEventListener("click", function (event) {
+		var link = event.target.closest ? event.target.closest('a[href^="#"]') : null;
+		if (!link) return;
+		var target = document.getElementById(link.getAttribute("href").slice(1));
+		if (!target) return;
+		event.preventDefault();
+		target.scrollIntoView({ behavior: "smooth", block: "start" });
+		try { history.replaceState(null, "", "#" + target.id); } catch (e) {}
+	});
+
+	document.getElementById("themeToggle").addEventListener("click", function () {
+		var current = root.getAttribute("data-theme")
+			|| (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+		var next = current === "dark" ? "light" : "dark";
+		root.setAttribute("data-theme", next);
+		try { localStorage.setItem(key, next); } catch (e) {}
+	});
+})();
+</script>
+</body>
+</html>

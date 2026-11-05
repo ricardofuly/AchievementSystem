@@ -1,0 +1,45 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Achievement System",
+	"Description": "Data-driven achievements with server-authoritative rewards and Steam integration.",
+	"Category": "Gameplay",
+	"CreatedBy": "Ricardo Fuly",
+	"CreatedByURL": "https://github.com/ricardofuly",
+	"DocsURL": "https://github.com/ricardofuly/AchievementSystem#readme",
+	"SupportURL": "https://github.com/ricardofuly/AchievementSystem/issues",
+	"EngineVersion": "5.8.0",
+	"CanContainContent": true,
+	"Modules": [
+		{
+			"Name": "AchievementsCore",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "AchievementsSteam",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [ "Win64", "Linux", "Mac" ]
+		},
+		{
+			"Name": "AchievementsUI",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "AchievementsTests",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "AchievementsEditor",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit"
+		}
+	],
+	"Plugins": [
+		{ "Name": "OnlineSubsystemSteam", "Enabled": true, "PlatformAllowList": [ "Win64", "Linux", "Mac" ] }
+	]
+}
