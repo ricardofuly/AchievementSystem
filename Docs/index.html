@@ -496,7 +496,8 @@ UAchievementStatics::GetAchievementComponent(PlayerState)-&gt;RetryPendingReward
 </ol>
 <p>Ordem da lista: resgatáveis, desbloqueados, em progresso e bloqueados. Achievements ocultos aparecem mascarados até o desbloqueio; para escondê-los totalmente, desligue <code>bShowHiddenLocked</code>.</p>
 
-<h3>Eventos do componente (só no jogador local)</h3>
+<h3>Eventos (só no jogador local)</h3>
+<p>Disponíveis no <code>AchievementComponent</code> e repassados pelo <code>AchievementLocalPlayerSubsystem</code>. Prefira fazer o bind no subsystem: ele existe desde o início e sobrevive à troca de mapa.</p>
 <table>
 	<tr><th>Evento</th><th>Dispara quando</th></tr>
 	<tr><td><code>OnProgressChanged</code></td><td>Qualquer mudança de progresso ou estado.</td></tr>

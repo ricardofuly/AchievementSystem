@@ -32,7 +32,8 @@ Full documentation (Portuguese) ships with the plugin in [`Docs/index.html`](Doc
 - **Save safety.**
   - Progress never regresses: both the save and the host merge with max.
   - A backup slot is restored automatically when the main save is missing or corrupt.
-- **UI base classes.** A queued toast, an achievement list and an entry widget with async icons, reward icons, masking for hidden achievements and a claim button. You build the visuals in UMG.
+- **UI-agnostic API.** `UAchievementLocalPlayerSubsystem` gives any UI the events, ready-made view data, filters and claims, in matches and in menus. See [Building your own UI](#building-your-own-ui).
+- **Optional UI base classes.** A queued toast, an achievement list and an entry widget with async icons, reward icons, masking for hidden achievements and a claim button. You build the visuals in UMG.
 - **Tooling.**
   - Validation and a Steamworks export sheet under **Tools → Achievements**.
   - Debug console commands.
