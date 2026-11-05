@@ -38,6 +38,11 @@ void UAchievementLocalPlayerSubsystem::Deinitialize()
 {
 	FTSTicker::GetCoreTicker().RemoveTicker(CommitTickerHandle);
 
+	if (UAchievementComponent* Component = BoundComponent.Get())
+	{
+		UnbindAchievementComponent(*Component);
+	}
+
 	FlushPlatform();
 	if (Storage)
 	{
@@ -97,6 +102,210 @@ FAchievementSnapshotEntry& UAchievementLocalPlayerSubsystem::FindOrAddSaved(cons
 	FAchievementSnapshotEntry& NewEntry = SaveData.Entries.AddDefaulted_GetRef();
 	NewEntry.AchievementId = AchievementId;
 	return NewEntry;
+}
+
+// ---------------------------------------------------------------------------
+// Component binding & event forwarding
+// ---------------------------------------------------------------------------
+
+void UAchievementLocalPlayerSubsystem::BindAchievementComponent(UAchievementComponent& Component)
+{
+	if (BoundComponent.Get() == &Component)
+	{
+		return;
+	}
+	if (UAchievementComponent* Previous = BoundComponent.Get())
+	{
+		UnbindAchievementComponent(*Previous);
+	}
+
+	BoundComponent = &Component;
+	Component.OnProgressChanged.AddDynamic(this, &ThisClass::ForwardProgressChanged);
+	Component.OnAchievementUnlocked.AddDynamic(this, &ThisClass::ForwardUnlocked);
+	Component.OnRewardsClaimable.AddDynamic(this, &ThisClass::ForwardRewardsClaimable);
+	Component.OnRewardsClaimed.AddDynamic(this, &ThisClass::ForwardRewardsClaimed);
+
+	OnAchievementsReady.Broadcast();
+}
+
+void UAchievementLocalPlayerSubsystem::UnbindAchievementComponent(UAchievementComponent& Component)
+{
+	Component.OnProgressChanged.RemoveDynamic(this, &ThisClass::ForwardProgressChanged);
+	Component.OnAchievementUnlocked.RemoveDynamic(this, &ThisClass::ForwardUnlocked);
+	Component.OnRewardsClaimable.RemoveDynamic(this, &ThisClass::ForwardRewardsClaimable);
+	Component.OnRewardsClaimed.RemoveDynamic(this, &ThisClass::ForwardRewardsClaimed);
+
+	if (BoundComponent.Get() == &Component)
+	{
+		BoundComponent.Reset();
+	}
+}
+
+void UAchievementLocalPlayerSubsystem::ForwardProgressChanged(const FAchievementProgressEntry& Entry)
+{
+	OnProgressChanged.Broadcast(Entry);
+}
+
+void UAchievementLocalPlayerSubsystem::ForwardUnlocked(const UAchievementDefinition* Definition)
+{
+	OnAchievementUnlocked.Broadcast(Definition);
+}
+
+void UAchievementLocalPlayerSubsystem::ForwardRewardsClaimable(const UAchievementDefinition* Definition)
+{
+	OnRewardsClaimable.Broadcast(Definition);
+}
+
+void UAchievementLocalPlayerSubsystem::ForwardRewardsClaimed(const UAchievementDefinition* Definition)
+{
+	OnRewardsClaimed.Broadcast(Definition);
+}
+
+// ---------------------------------------------------------------------------
+// Queries & commands
+// ---------------------------------------------------------------------------
+
+namespace AchievementQueries
+{
+	static int32 StatusRank(const FAchievementViewData& View)
+	{
+		if (View.bClaimable)                             return 0;
+		if (View.IsUnlocked())                           return 1;
+		if (View.State == EAchievementState::InProgress) return 2;
+		return 3;
+	}
+
+	static bool PassesFilter(const FAchievementViewData& View, EAchievementListFilter Filter)
+	{
+		switch (Filter)
+		{
+		case EAchievementListFilter::Unlocked:  return View.IsUnlocked();
+		case EAchievementListFilter::Locked:    return !View.IsUnlocked();
+		case EAchievementListFilter::Claimable: return View.bClaimable;
+		default:                                return true;
+		}
+	}
+}
+
+bool UAchievementLocalPlayerSubsystem::FindProgress(const FGameplayTag& AchievementId, FAchievementProgressEntry& OutEntry) const
+{
+	if (const UAchievementComponent* Component = BoundComponent.Get())
+	{
+		return Component->GetProgress(AchievementId, OutEntry);
+	}
+
+	const FAchievementSnapshotEntry* Saved = SaveData.Entries.FindByPredicate(
+		[&AchievementId](const FAchievementSnapshotEntry& Candidate) { return Candidate.AchievementId == AchievementId; });
+	if (!Saved)
+	{
+		return false;
+	}
+
+	OutEntry.AchievementId = Saved->AchievementId;
+	OutEntry.Value = Saved->Value;
+	OutEntry.State = Saved->State;
+	OutEntry.UnlockedAtUtcTicks = Saved->UnlockedAtUtcTicks;
+	OutEntry.ClaimedRewardMask = Saved->ClaimedRewardMask;
+	return true;
+}
+
+TArray<FAchievementViewData> UAchievementLocalPlayerSubsystem::GetAchievements(EAchievementListFilter Filter, EAchievementListSort Sort, bool bIncludeHiddenLocked) const
+{
+	TArray<FAchievementViewData> Views;
+	const UAchievementSubsystem* Subsystem = GetAchievementSubsystem();
+	if (!Subsystem)
+	{
+		return Views;
+	}
+
+	for (const UAchievementDefinition* Definition : Subsystem->GetAllDefinitions())
+	{
+		FAchievementProgressEntry Entry;
+		const bool bHasEntry = FindProgress(Definition->Id, Entry);
+		FAchievementViewData View = FAchievementViewData::Make(*Definition, bHasEntry ? &Entry : nullptr);
+
+		if ((View.bMasked && !bIncludeHiddenLocked) || !AchievementQueries::PassesFilter(View, Filter))
+		{
+			continue;
+		}
+		Views.Add(MoveTemp(View));
+	}
+
+	if (Sort == EAchievementListSort::Status)
+	{
+		Views.StableSort([](const FAchievementViewData& A, const FAchievementViewData& B)
+		{
+			const int32 RankA = AchievementQueries::StatusRank(A);
+			const int32 RankB = AchievementQueries::StatusRank(B);
+			return RankA != RankB ? RankA < RankB : A.Progress > B.Progress;
+		});
+	}
+	return Views;
+}
+
+bool UAchievementLocalPlayerSubsystem::GetAchievement(FGameplayTag AchievementId, FAchievementViewData& OutView) const
+{
+	const UAchievementSubsystem* Subsystem = GetAchievementSubsystem();
+	const UAchievementDefinition* Definition = Subsystem ? Subsystem->FindDefinition(AchievementId) : nullptr;
+	if (!Definition)
+	{
+		return false;
+	}
+
+	FAchievementProgressEntry Entry;
+	const bool bHasEntry = FindProgress(AchievementId, Entry);
+	OutView = FAchievementViewData::Make(*Definition, bHasEntry ? &Entry : nullptr);
+	return true;
+}
+
+int32 UAchievementLocalPlayerSubsystem::GetUnlockedCount() const
+{
+	const UAchievementSubsystem* Subsystem = GetAchievementSubsystem();
+	if (!Subsystem)
+	{
+		return 0;
+	}
+
+	int32 Count = 0;
+	for (const UAchievementDefinition* Definition : Subsystem->GetAllDefinitions())
+	{
+		FAchievementProgressEntry Entry;
+		if (FindProgress(Definition->Id, Entry) && Entry.IsUnlocked())
+		{
+			++Count;
+		}
+	}
+	return Count;
+}
+
+int32 UAchievementLocalPlayerSubsystem::GetTotalCount() const
+{
+	const UAchievementSubsystem* Subsystem = GetAchievementSubsystem();
+	return Subsystem ? Subsystem->GetAllDefinitions().Num() : 0;
+}
+
+void UAchievementLocalPlayerSubsystem::ClaimRewards(FGameplayTag AchievementId)
+{
+	if (UAchievementComponent* Component = BoundComponent.Get())
+	{
+		Component->RequestClaimRewards(AchievementId);
+	}
+	else
+	{
+		UE_LOG(LogAchievements, Warning, TEXT("ClaimRewards(%s) ignored: rewards can only be claimed during a match"), *AchievementId.ToString());
+	}
+}
+
+void UAchievementLocalPlayerSubsystem::ClaimAllRewards()
+{
+	if (UAchievementComponent* Component = BoundComponent.Get())
+	{
+		Component->RequestClaimAllRewards();
+	}
+	else
+	{
+		UE_LOG(LogAchievements, Warning, TEXT("ClaimAllRewards ignored: rewards can only be claimed during a match"));
+	}
 }
 
 // ---------------------------------------------------------------------------

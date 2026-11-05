@@ -4,7 +4,7 @@ Data-driven achievements for **Unreal Engine 5.8** with **host-authoritative rew
 
 Designers create achievements as Data Assets. Gameplay code reports what happened with one call. The plugin handles progress, unlocks, rewards, replication, saving and Steam.
 
-> **Status: 0.1.0 (pre-release).** Everything is implemented and was exercised in PIE. It has not yet been validated in a packaged Shipping build, against a live Steam AppID or across two machines. Test it in your project before relying on it in production.
+> **Status: 0.2.0 (pre-release).** Everything is implemented and was exercised in PIE. It has not yet been validated in a packaged Shipping build, against a live Steam AppID or across two machines. Test it in your project before relying on it in production.
 
 Full documentation (Portuguese) ships with the plugin in [`Docs/index.html`](Docs/index.html). In the editor, open it from **Tools → Achievements → Documentation**.
 
@@ -100,13 +100,39 @@ A working reference is in [`Examples/AchievementExampleWallet.h`](Source/Achieve
 
 > The plugin persists *that a reward was granted*, not the item itself. Your inventory or wallet must save its own contents.
 
+## Building your own UI
+
+The widgets in `AchievementsUI` are an **optional** reference implementation. Any UI (plain UMG, CommonUI, MVVM, Slate or a HUD) can use the same public API: `UAchievementLocalPlayerSubsystem`, one per local player.
+
+- **Events are always bindable**, even before the PlayerState replicates: `OnAchievementsReady`, `OnProgressChanged`, `OnAchievementUnlocked`, `OnRewardsClaimable`, `OnRewardsClaimed`.
+- **Queries work in menus too.** In a match they read live progress; elsewhere they read the local save.
+  - `GetAchievements(Filter, Sort)`
+  - `GetAchievement(Id)`
+  - `GetUnlockedCount()` / `GetTotalCount()`
+- **Commands:** `ClaimRewards(Id)` and `ClaimAllRewards()`.
+- **Display-ready data:** `FAchievementViewData` comes with progress from 0 to 1, rewards, `bClaimable` and hidden achievements masked.
+
+```cpp
+#include "AchievementLocalPlayerSubsystem.h"
+
+UAchievementLocalPlayerSubsystem* Achievements = LocalPlayer->GetSubsystem<UAchievementLocalPlayerSubsystem>();
+Achievements->OnAchievementUnlocked.AddDynamic(this, &UMyHud::HandleUnlocked);
+
+for (const FAchievementViewData& View : Achievements->GetAchievements(EAchievementListFilter::Claimable))
+{
+	// Build your rows.
+}
+```
+
+In Blueprint: **Get Owning Local Player → Get Subsystem (AchievementLocalPlayerSubsystem)**, then bind the events and call **Get Achievements**.
+
 ## Architecture
 
 | Module | Type | Responsibility |
 |---|---|---|
 | `AchievementsCore` | Runtime | Definitions, component, subsystems, rewards, save and platform interfaces. No Steam dependency. |
 | `AchievementsSteam` | Runtime | Steamworks implementation of `IAchievementPlatform` |
-| `AchievementsUI` | Runtime | Toast, list and entry widget base classes |
+| `AchievementsUI` | Runtime | Optional toast, list and entry widget base classes |
 | `AchievementsEditor` | Editor | Validation, Steamworks export and the documentation tab |
 | `AchievementsTests` | Editor | Automation Specs |
 
@@ -121,7 +147,7 @@ Main classes:
 | Class | Role |
 |---|---|
 | `UAchievementSubsystem` (Game Instance) | Definition registry, reward granters, platform |
-| `UAchievementLocalPlayerSubsystem` (Local Player) | Per-player save and platform sync |
+| `UAchievementLocalPlayerSubsystem` (Local Player) | UI API (events, queries, claims), per-player save and platform sync |
 | `UAchievementComponent` (PlayerState) | Host-side progress, replication, claims |
 | `UAchievementStatics` | One-line Blueprint/C++ gameplay API |
 

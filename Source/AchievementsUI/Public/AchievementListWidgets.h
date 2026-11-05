@@ -4,76 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "AchievementTypes.h"
+#include "AchievementViewData.h"
 #include "AchievementWidgetBase.h"
 #include "AchievementListWidgets.generated.h"
 
-class UAchievementDefinition;
 class UPanelWidget;
 class UTexture2D;
-
-/** Display-ready data for one reward of an achievement. */
-USTRUCT(BlueprintType)
-struct ACHIEVEMENTSUI_API FAchievementRewardViewData
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	FText DisplayName;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	TSoftObjectPtr<UTexture2D> Icon;
-
-	/** This specific reward was already granted (partial grants are possible). */
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	bool bGranted = false;
-};
-
-/** Display-ready data for one achievement; hidden achievements are already masked. */
-USTRUCT(BlueprintType)
-struct ACHIEVEMENTSUI_API FAchievementViewData
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	FGameplayTag Id;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	FText DisplayName;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	FText Description;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	TSoftObjectPtr<UTexture2D> Icon;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	EAchievementState State = EAchievementState::Locked;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	int32 Value = 0;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	int32 TargetValue = 1;
-
-	/** 0..1, ready for a progress bar. */
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	float Progress = 0.f;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	bool bHasRewards = false;
-
-	/** Same order as the definition's Rewards. Empty while the achievement is masked. */
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	TArray<FAchievementRewardViewData> Rewards;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	bool bClaimable = false;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Achievements")
-	bool bMasked = false;
-
-	static FAchievementViewData Make(const UAchievementDefinition& Definition, const FAchievementProgressEntry* Entry);
-};
 
 UCLASS(Abstract)
 class ACHIEVEMENTSUI_API UAchievementEntryWidget : public UUserWidget
@@ -133,8 +69,9 @@ public:
 	int32 GetTotalCount() const { return EntriesById.Num(); }
 
 protected:
-	virtual void BindToComponent(UAchievementComponent& Component) override;
-	virtual void UnbindFromComponent(UAchievementComponent& Component) override;
+	virtual void BindToAchievements(UAchievementLocalPlayerSubsystem& InAchievements) override;
+	virtual void UnbindFromAchievements(UAchievementLocalPlayerSubsystem& InAchievements) override;
+	virtual void HandleAchievementsReady() override;
 
 	/** Fired after every rebuild or update; use it for counters like "3 / 20". */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Achievements")

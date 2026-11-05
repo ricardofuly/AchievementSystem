@@ -164,7 +164,7 @@ th { background: var(--surface-2); font-weight: 600; white-space: nowrap; }
 
 <nav>
 	<div class="brand">Achievement System</div>
-	<div class="version">v0.1.0 · Unreal Engine 5.8</div>
+	<div class="version">v0.2.0 · Unreal Engine 5.8</div>
 	<ol>
 		<li class="group">Começando</li>
 		<li><a href="#visao-geral">Visão geral</a></li>
@@ -176,6 +176,7 @@ th { background: var(--surface-2); font-weight: 600; white-space: nowrap; }
 		<li><a href="#condicoes">Condições</a></li>
 		<li><a href="#rewards">Rewards e granters</a></li>
 		<li><a href="#ui">Interface (UI)</a></li>
+		<li><a href="#ui-propria">Criando sua própria UI</a></li>
 		<li><a href="#steam">Steam</a></li>
 		<li class="group">Ferramentas</li>
 		<li><a href="#editor">Menu do editor</a></li>
@@ -458,7 +459,7 @@ UAchievementStatics::GetAchievementComponent(PlayerState)-&gt;RetryPendingReward
 <!-- ===================================================================== -->
 <section id="ui">
 <h2>Interface (UI)</h2>
-<p>As classes base ficam no módulo <code>AchievementsUI</code>. O C++ fornece dados e eventos, e o visual fica no seu Widget Blueprint. Os widgets encontram sozinhos o componente do jogador local e tentam de novo até o PlayerState replicar.</p>
+<p>As classes base ficam no módulo <code>AchievementsUI</code> e são <strong>opcionais</strong>: elas usam a mesma API de <a href="#ui-propria">Criando sua própria UI</a>. O C++ fornece dados e eventos, e o visual fica no seu Widget Blueprint. A lista também funciona fora da partida, lendo o save local.</p>
 
 <h3>Toast (aviso de desbloqueio)</h3>
 <ol class="steps">
@@ -503,6 +504,63 @@ UAchievementStatics::GetAchievementComponent(PlayerState)-&gt;RetryPendingReward
 	<tr><td><code>OnRewardsClaimable</code></td><td>Achievement desbloqueado com rewards pendentes.</td></tr>
 	<tr><td><code>OnRewardsClaimed</code></td><td>Todos os rewards do achievement foram entregues.</td></tr>
 </table>
+</section>
+
+<!-- ===================================================================== -->
+<section id="ui-propria">
+<h2>Criando sua própria UI</h2>
+<p>As classes do módulo <code>AchievementsUI</code> são <strong>opcionais</strong>, apenas uma implementação de referência. Qualquer UI (UMG puro, CommonUI, MVVM, Slate ou HUD) usa a mesma API pública: o <code>AchievementLocalPlayerSubsystem</code>, um por jogador local.</p>
+
+<h3>Por que usar o subsystem</h3>
+<ul>
+	<li><strong>Eventos sempre disponíveis:</strong> dá para fazer o bind já na criação do widget, mesmo antes do PlayerState replicar. Ele repassa os eventos do componente quando a partida começa.</li>
+	<li><strong>Funciona fora da partida:</strong> no menu principal, as consultas leem o save local. Na partida, leem o progresso ao vivo.</li>
+	<li><strong>Dados prontos:</strong> <code>FAchievementViewData</code> já vem com nome, descrição, ícone, progresso de 0 a 1, rewards, <code>bClaimable</code> e ocultos mascarados.</li>
+	<li><strong>Split-screen:</strong> cada jogador local tem o seu, então cada widget mostra os dados do próprio dono.</li>
+</ul>
+
+<h3>Em Blueprint (qualquer widget)</h3>
+<pre><code>Event Construct
+  Get Owning Local Player → Get Subsystem (AchievementLocalPlayerSubsystem) → guarde em "Achievements"
+  Achievements → Bind Event to On Achievement Unlocked → seu evento de toast
+  Achievements → Bind Event to On Progress Changed     → Refresh
+  Achievements → Bind Event to On Achievements Ready   → Refresh
+  Refresh
+
+Refresh
+  Achievements → Get Achievements (Filter = All, Sort = Status) → For Each → crie as linhas
+  Achievements → Get Unlocked Count / Get Total Count → texto "3 / 20"
+
+Botão Resgatar
+  Achievements → Claim Rewards (Id)</code></pre>
+
+<h3>Em C++</h3>
+<pre><code>#include "AchievementLocalPlayerSubsystem.h"
+
+UAchievementLocalPlayerSubsystem* Achievements = LocalPlayer-&gt;GetSubsystem&lt;UAchievementLocalPlayerSubsystem&gt;();
+Achievements-&gt;OnAchievementUnlocked.AddDynamic(this, &amp;UMyHud::HandleUnlocked);
+
+for (const FAchievementViewData&amp; View : Achievements-&gt;GetAchievements(EAchievementListFilter::Claimable))
+{
+	// ...
+}</code></pre>
+
+<h3>API do subsystem para UI</h3>
+<table>
+	<tr><th>Membro</th><th>Descrição</th></tr>
+	<tr><td><code>OnAchievementsReady</code></td><td>A partida começou ou trocou de mapa: atualize as listas.</td></tr>
+	<tr><td><code>OnProgressChanged</code>, <code>OnAchievementUnlocked</code>, <code>OnRewardsClaimable</code>, <code>OnRewardsClaimed</code></td><td>Os mesmos eventos do componente, sempre disponíveis para bind.</td></tr>
+	<tr><td><code>GetAchievements(Filter, Sort, bIncludeHiddenLocked)</code></td><td>Lista pronta. Filtros: All, Unlocked, Locked, Claimable. Ordenação: Status (resgatáveis, desbloqueados, em progresso, bloqueados) ou DefinitionOrder.</td></tr>
+	<tr><td><code>GetAchievement(Id, OutView)</code></td><td>Um único achievement.</td></tr>
+	<tr><td><code>GetUnlockedCount()</code> / <code>GetTotalCount()</code></td><td>Contadores.</td></tr>
+	<tr><td><code>ClaimRewards(Id)</code> / <code>ClaimAllRewards()</code></td><td>Resgate. Só funciona durante a partida.</td></tr>
+	<tr><td><code>IsInMatch()</code></td><td>Se há uma partida ativa (progresso ao vivo e resgate possível).</td></tr>
+</table>
+
+<div class="note">
+	<strong>Ícones</strong>
+	Os ícones em <code>FAchievementViewData</code> são soft references. Carregue com <em>Async Load Asset</em> antes de usar, ou use o <code>AchievementEntryWidget</code>, que já faz isso.
+</div>
 </section>
 
 <!-- ===================================================================== -->
@@ -625,9 +683,12 @@ UAchievementStatics::GetAchievementComponent(PlayerState)-&gt;RetryPendingReward
 </table>
 
 <h3>UAchievementLocalPlayerSubsystem (Local Player)</h3>
-<p>Um por jogador local. Cuida do save e da sincronização com a plataforma daquele jogador.</p>
+<p>Um por jogador local. É a API para UI (veja <a href="#ui-propria">Criando sua própria UI</a>) e cuida do save e da sincronização com a plataforma daquele jogador.</p>
 <table>
 	<tr><th>Membro</th><th>Descrição</th></tr>
+	<tr><td><code>GetAchievements</code>, <code>GetAchievement</code>, <code>GetUnlockedCount</code>, <code>GetTotalCount</code></td><td>Consultas prontas para UI, na partida ou no menu.</td></tr>
+	<tr><td><code>ClaimRewards(Id)</code> / <code>ClaimAllRewards()</code></td><td>Resgate durante a partida.</td></tr>
+	<tr><td>Eventos <code>On...</code></td><td>Repassados do componente; sempre disponíveis para bind.</td></tr>
 	<tr><td><code>IsPrimaryPlayer()</code></td><td>Se este é o jogador principal, o que está logado na Steam.</td></tr>
 	<tr><td><code>FlushPlatform()</code></td><td>Envia agora as operações pendentes à plataforma (ex.: no fim da partida). Não faz nada para convidados.</td></tr>
 </table>

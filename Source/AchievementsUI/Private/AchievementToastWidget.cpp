@@ -1,19 +1,19 @@
 #include "AchievementToastWidget.h"
-#include "AchievementComponent.h"
+#include "AchievementLocalPlayerSubsystem.h"
 #include "TimerManager.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(AchievementToastWidget)
 
-void UAchievementToastWidget::BindToComponent(UAchievementComponent& Component)
+void UAchievementToastWidget::BindToAchievements(UAchievementLocalPlayerSubsystem& InAchievements)
 {
-	Component.OnAchievementUnlocked.AddDynamic(this, &ThisClass::HandleUnlocked);
-	Component.OnRewardsClaimed.AddDynamic(this, &ThisClass::HandleRewardsClaimed);
+	InAchievements.OnAchievementUnlocked.AddDynamic(this, &ThisClass::HandleUnlocked);
+	InAchievements.OnRewardsClaimed.AddDynamic(this, &ThisClass::HandleRewardsClaimed);
 }
 
-void UAchievementToastWidget::UnbindFromComponent(UAchievementComponent& Component)
+void UAchievementToastWidget::UnbindFromAchievements(UAchievementLocalPlayerSubsystem& InAchievements)
 {
-	Component.OnAchievementUnlocked.RemoveDynamic(this, &ThisClass::HandleUnlocked);
-	Component.OnRewardsClaimed.RemoveDynamic(this, &ThisClass::HandleRewardsClaimed);
+	InAchievements.OnAchievementUnlocked.RemoveDynamic(this, &ThisClass::HandleUnlocked);
+	InAchievements.OnRewardsClaimed.RemoveDynamic(this, &ThisClass::HandleRewardsClaimed);
 }
 
 void UAchievementToastWidget::NativeDestruct()

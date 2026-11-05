@@ -117,6 +117,9 @@ private:
 	TSet<FGameplayTag> AnnouncedUnlocks;
 	TSet<FGameplayTag> AnnouncedClaims;
 
+	/** Local player subsystem forwarding this component's events; set once the handshake ran. */
+	TWeakObjectPtr<UAchievementLocalPlayerSubsystem> BoundLocalSubsystem;
+
 	FTimerHandle HandshakeRetryHandle;
 	int32 HandshakeAttempts = 0;
 	bool bHandshakeSent = false;

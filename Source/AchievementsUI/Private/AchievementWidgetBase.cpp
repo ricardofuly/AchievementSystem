@@ -1,9 +1,6 @@
 #include "AchievementWidgetBase.h"
-#include "AchievementComponent.h"
-#include "AchievementStatics.h"
-#include "GameFramework/PlayerController.h"
-#include "GameFramework/PlayerState.h"
-#include "TimerManager.h"
+#include "AchievementLocalPlayerSubsystem.h"
+#include "Engine/LocalPlayer.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(AchievementWidgetBase)
 
@@ -11,40 +8,42 @@ void UAchievementWidgetBase::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	TryBind();
+	const ULocalPlayer* LocalPlayer = GetOwningLocalPlayer();
+	UAchievementLocalPlayerSubsystem* Subsystem = LocalPlayer ? LocalPlayer->GetSubsystem<UAchievementLocalPlayerSubsystem>() : nullptr;
+	if (!Subsystem)
+	{
+		return;
+	}
+
+	Achievements = Subsystem;
+	Subsystem->OnAchievementsReady.AddDynamic(this, &ThisClass::HandleAchievementsReady);
+	BindToAchievements(*Subsystem);
+
+	if (Subsystem->IsInMatch())
+	{
+		HandleAchievementsReady();
+	}
 }
 
 void UAchievementWidgetBase::NativeDestruct()
 {
-	if (const UWorld* World = GetWorld())
+	if (UAchievementLocalPlayerSubsystem* Subsystem = Achievements.Get())
 	{
-		World->GetTimerManager().ClearTimer(RetryHandle);
+		Subsystem->OnAchievementsReady.RemoveDynamic(this, &ThisClass::HandleAchievementsReady);
+		UnbindFromAchievements(*Subsystem);
 	}
-
-	if (UAchievementComponent* Component = BoundComponent.Get())
-	{
-		UnbindFromComponent(*Component);
-	}
-	BoundComponent.Reset();
+	Achievements.Reset();
 
 	Super::NativeDestruct();
 }
 
-void UAchievementWidgetBase::TryBind()
+void UAchievementWidgetBase::HandleAchievementsReady()
 {
-	const APlayerController* Controller = GetOwningPlayer();
-	UAchievementComponent* Component = UAchievementStatics::GetAchievementComponent(Controller ? Controller->PlayerState.Get() : nullptr);
-
-	if (!Component)
-	{
-		if (const UWorld* World = GetWorld())
-		{
-			World->GetTimerManager().SetTimer(RetryHandle, FTimerDelegate::CreateUObject(this, &ThisClass::TryBind), RetryIntervalSeconds, false);
-		}
-		return;
-	}
-
-	BoundComponent = Component;
-	BindToComponent(*Component);
 	OnAchievementComponentReady();
+}
+
+UAchievementComponent* UAchievementWidgetBase::GetAchievementComponent() const
+{
+	const UAchievementLocalPlayerSubsystem* Subsystem = Achievements.Get();
+	return Subsystem ? Subsystem->GetAchievementComponent() : nullptr;
 }

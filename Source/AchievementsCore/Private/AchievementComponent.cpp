@@ -50,6 +50,12 @@ void UAchievementComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		World->GetTimerManager().ClearTimer(HandshakeRetryHandle);
 	}
 
+	if (UAchievementLocalPlayerSubsystem* LocalSubsystem = BoundLocalSubsystem.Get())
+	{
+		LocalSubsystem->UnbindAchievementComponent(*this);
+	}
+	BoundLocalSubsystem.Reset();
+
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -103,6 +109,10 @@ bool UAchievementComponent::TryStartHandshake()
 	{
 		ServerSubmitSnapshot(Snapshot);
 	}
+
+	// From here on the local player's subsystem forwards this component's events to any UI.
+	BoundLocalSubsystem = LocalSubsystem;
+	LocalSubsystem->BindAchievementComponent(*this);
 	return true;
 }
 

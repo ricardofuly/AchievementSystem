@@ -1,4 +1,5 @@
-// Base for achievement widgets: finds the local player's UAchievementComponent and binds to it.
+// Base for the reference achievement widgets. Uses only UAchievementLocalPlayerSubsystem,
+// the same public API any custom UI can use without these classes.
 
 #pragma once
 
@@ -7,36 +8,36 @@
 #include "AchievementWidgetBase.generated.h"
 
 class UAchievementComponent;
+class UAchievementLocalPlayerSubsystem;
 
-/**
- * On clients the PlayerState may replicate after the HUD is created, so binding retries
- * until the component exists. Subclasses override BindToComponent / UnbindFromComponent.
- */
 UCLASS(Abstract)
 class ACHIEVEMENTSUI_API UAchievementWidgetBase : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
+	/** The owning player's achievement API: events, queries and claims. */
 	UFUNCTION(BlueprintPure, Category = "Achievements")
-	UAchievementComponent* GetAchievementComponent() const { return BoundComponent.Get(); }
+	UAchievementLocalPlayerSubsystem* GetAchievements() const { return Achievements.Get(); }
+
+	/** The match component, or null outside a match. Prefer GetAchievements(). */
+	UFUNCTION(BlueprintPure, Category = "Achievements")
+	UAchievementComponent* GetAchievementComponent() const;
 
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
-	virtual void BindToComponent(UAchievementComponent& Component) {}
-	virtual void UnbindFromComponent(UAchievementComponent& Component) {}
+	virtual void BindToAchievements(UAchievementLocalPlayerSubsystem& InAchievements) {}
+	virtual void UnbindFromAchievements(UAchievementLocalPlayerSubsystem& InAchievements) {}
 
-	/** Fired once the local player's component is found and bound. */
+	/** Fired when a match's achievement data is ready (also after map travel). */
 	UFUNCTION(BlueprintImplementableEvent, Category = "Achievements")
 	void OnAchievementComponentReady();
 
+	UFUNCTION()
+	virtual void HandleAchievementsReady();
+
 private:
-	void TryBind();
-
-	TWeakObjectPtr<UAchievementComponent> BoundComponent;
-	FTimerHandle RetryHandle;
-
-	static constexpr float RetryIntervalSeconds = 0.25f;
+	TWeakObjectPtr<UAchievementLocalPlayerSubsystem> Achievements;
 };

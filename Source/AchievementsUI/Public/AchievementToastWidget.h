@@ -41,8 +41,8 @@ public:
 	void FinishToast();
 
 protected:
-	virtual void BindToComponent(UAchievementComponent& Component) override;
-	virtual void UnbindFromComponent(UAchievementComponent& Component) override;
+	virtual void BindToAchievements(UAchievementLocalPlayerSubsystem& InAchievements) override;
+	virtual void UnbindFromAchievements(UAchievementLocalPlayerSubsystem& InAchievements) override;
 	virtual void NativeDestruct() override;
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Achievements")
