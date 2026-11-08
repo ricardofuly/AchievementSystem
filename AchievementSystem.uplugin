@@ -30,8 +30,9 @@
 		},
 		{
 			"Name": "AchievementsTests",
-			"Type": "Editor",
-			"LoadingPhase": "Default"
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"TargetAllowList": [ "Editor" ]
 		},
 		{
 			"Name": "AchievementsEditor",
